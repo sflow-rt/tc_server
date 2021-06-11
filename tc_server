@@ -74,7 +74,7 @@ class TcRequestHandler(BaseHTTPRequestHandler):
        return
     dev = m.group(1)
     pref = m.group(2)
-    cmd = [self.tc_cmd,"filter","del","dev",dev,"ingrss","prio",pref,"flower"]
+    cmd = [self.tc_cmd,"filter","del","dev",dev,"ingress","prio",pref,"flower"]
     child = Popen(cmd,stderr=STDOUT,stdout=PIPE)
     s = child.communicate()[0]
     if child.returncode:
