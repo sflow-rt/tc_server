@@ -1,0 +1,11 @@
+[Unit]
+Description=RESTful access to tc flower filters
+Documentation=https://github.com/pphaal/tc_server
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/sbin/tc_server
+
+[Install]
+WantedBy=multi-user.target

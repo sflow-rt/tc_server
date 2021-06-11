@@ -1,0 +1,87 @@
+#!/usr/bin/env python
+
+from BaseHTTPServer import BaseHTTPRequestHandler,HTTPServer
+from json import dumps,loads
+from subprocess import Popen,STDOUT,PIPE
+import re
+
+class TcRequestHandler(BaseHTTPRequestHandler):
+
+  tc_cmd = '/usr/sbin/tc'
+  uripat_dev = re.compile('^/([a-zA-Z0-9]+)$')
+  uripat_filter = re.compile('^/([a-zA-Z0-9]+)/([0-9]+)$')
+
+  def wheaders(self,status):
+    self.send_response(status)
+    self.send_header('Accept','application/json')
+    self.send_header('Content-Type','application/json')
+    self.end_headers() 
+
+  def do_PUT(self):
+    m = self.uripat_filter.match(self.path)
+    if None == m:
+       self.wheaders(404)
+       return
+    dev = m.group(1)
+    pref = m.group(2)
+    if not 'application/json' in self.headers.getheader('content-type'):
+       self.wheaders(406)
+       return
+    len = int(self.headers.getheader('content-length'))
+    data = self.rfile.read(len)
+    try:
+      filter = loads(data)
+    except ValueError:
+      self.wheaders(400)
+      return
+    cmd = [self.tc_cmd,"filter","add","dev",dev,"protocol","ip","parent","ffff:","pref",pref,"flower"]
+    for key in filter:
+      cmd.append(key)
+      cmd.append(filter[key])
+    cmd.append("action")
+    cmd.append("drop")
+    child = Popen(cmd,stderr=STDOUT,stdout=PIPE)
+    s = child.communicate()[0]
+    if child.returncode:
+      print(s)
+      self.wheaders(400)
+      return
+    self.wheaders(204)
+
+  def do_POST(self):
+    self.do_PUT()
+
+  def do_GET(self):
+    m = self.uripat_dev.match(self.path)
+    if None == m:
+       self.wheaders(404)
+       return
+    dev = m.group(1)
+    cmd = [self.tc_cmd,"-j","filter","show","dev",dev,"ingress"]
+    child = Popen(cmd,stderr=STDOUT,stdout=PIPE)
+    s = child.communicate()[0]
+    if child.returncode:
+      print(s)
+      self.wheaders(400)
+      return
+    self.wheaders(200)
+    self.wfile.write(s)
+
+  def do_DELETE(self):
+    m = self.uripat_filter.match(self.path)
+    if None == m:
+       self.wheaders(404)
+       return
+    dev = m.group(1)
+    pref = m.group(2)
+    cmd = [self.tc_cmd,"filter","del","dev",dev,"parent","ffff:","prio",pref,"protocol","ip","flower"]
+    child = Popen(cmd,stderr=STDOUT,stdout=PIPE)
+    s = child.communicate()[0]
+    if child.returncode:
+      print(s)
+      self.wheaders(400)
+      return
+    self.wheaders(204)
+
+server = HTTPServer(('localhost',8081), TcRequestHandler) 
+server.serve_forever()

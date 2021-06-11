@@ -1,0 +1,5 @@
+sudo wget -P /usr/sbin/ https://raw.githubusercontent.com/sflow-rt/tc_server/master/tc_server
+sudo wget -P /lib/systemd/system/ https://raw.githubusercontent.com/sflow-rt/tc_server/master/tc_server.service
+sudo chmod +x /usr/sbin/tc_server
+sudo systemctl enable tc_server.service
+sudo systemctl start tc_server.service
