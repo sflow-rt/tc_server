@@ -1,13 +1,13 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
-from BaseHTTPServer import BaseHTTPRequestHandler,HTTPServer
+from http.server import BaseHTTPRequestHandler,HTTPServer
 from json import dumps,loads
 from subprocess import Popen,STDOUT,PIPE
 import re
 
 class TcRequestHandler(BaseHTTPRequestHandler):
 
-  tc_cmd = '/usr/sbin/tc'
+  tc_cmd = '/sbin/tc'
   uripat_dev = re.compile('^/([a-zA-Z0-9]+)$')
   uripat_filter = re.compile('^/([a-zA-Z0-9]+)/([0-9]+)$')
 
@@ -24,17 +24,17 @@ class TcRequestHandler(BaseHTTPRequestHandler):
        return
     dev = m.group(1)
     pref = m.group(2)
-    if not 'application/json' in self.headers.getheader('content-type'):
+    if not 'application/json' in self.headers.get('content-type'):
        self.wheaders(406)
        return
-    len = int(self.headers.getheader('content-length'))
+    len = int(self.headers.get('content-length'))
     data = self.rfile.read(len)
     try:
       filter = loads(data)
     except ValueError:
       self.wheaders(400)
       return
-    cmd = [self.tc_cmd,"filter","add","dev",dev,"protocol","ip","parent","ffff:","pref",pref,"flower"]
+    cmd = [self.tc_cmd,"filter","add","dev",dev,"ingress","protocol","ip","pref",pref,"flower"]
     for key in filter:
       cmd.append(key)
       cmd.append(filter[key])
@@ -74,7 +74,7 @@ class TcRequestHandler(BaseHTTPRequestHandler):
        return
     dev = m.group(1)
     pref = m.group(2)
-    cmd = [self.tc_cmd,"filter","del","dev",dev,"parent","ffff:","prio",pref,"protocol","ip","flower"]
+    cmd = [self.tc_cmd,"filter","del","dev",dev,"ingrss","prio",pref,"flower"]
     child = Popen(cmd,stderr=STDOUT,stdout=PIPE)
     s = child.communicate()[0]
     if child.returncode:
@@ -83,5 +83,5 @@ class TcRequestHandler(BaseHTTPRequestHandler):
       return
     self.wheaders(204)
 
-server = HTTPServer(('localhost',8081), TcRequestHandler) 
+server = HTTPServer(('',8081), TcRequestHandler) 
 server.serve_forever()
